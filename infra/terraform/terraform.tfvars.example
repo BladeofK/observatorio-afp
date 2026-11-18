@@ -1,0 +1,14 @@
+# Copia este archivo como terraform.tfvars (excluido de git) y completa los valores.
+
+proyecto_id        = "observatorio-afp-xxxx"
+cuenta_facturacion = "000000-000000-000000"
+
+# Revisa la moneda en Facturación → Resumen. Si es CLP, usa por ejemplo 1000.
+moneda            = "USD"
+monto_presupuesto = 1
+
+# Fase 3: después del primer docker push, descomenta y completa.
+# imagen = "us-central1-docker.pkg.dev/observatorio-afp-xxxx/observatorio/app:v1"
+
+# Fase 4: después de cargar la API key de Gemini en Secret Manager.
+# usar_gemini = true
