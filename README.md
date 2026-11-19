@@ -8,6 +8,9 @@ lenguaje natural gracias a un **LLM (Gemini)** con barreras de seguridad.
 Diseñada para operar **dentro de la capa gratuita de Google Cloud**, con límites duros que
 impiden gastar dinero (ver [docs/blindaje-costos.md](docs/blindaje-costos.md)).
 
+**API en vivo:** https://observatorio-api-wmd2qz6utq-uc.a.run.app/docs
+(datos desde 2020, actualizados cada mañana a las 08:00, hora de Chile).
+
 ## Arquitectura
 
 ```mermaid
@@ -85,7 +88,14 @@ uv sync
 uv run pytest
 ```
 
-Para conectarse a GCP en local:
+Descargar y validar las fuentes reales sin tocar GCP:
+
+```powershell
+uv run python -m observatorio.etl.main probar --desde 2024-01-01
+```
+
+Para conectarse a GCP en local (en Windows, `gcloud.cmd` evita el bloqueo de scripts de
+PowerShell):
 
 ```powershell
 gcloud auth application-default login
@@ -104,6 +114,19 @@ uv run uvicorn observatorio.api.main:app --reload
 ```
 
 La documentación interactiva de la API queda en `http://localhost:8000/docs`.
+
+## Desplegar una nueva versión
+
+No requiere Docker local: **Cloud Build** construye la imagen en GCP (capa gratuita). La
+fuente se sube a un bucket regional del proyecto y respeta `.gitignore`, así que `.env` y
+`terraform.tfvars` nunca salen del equipo.
+
+```powershell
+gcloud.cmd builds submit --region us-central1 --tag us-central1-docker.pkg.dev/<proyecto>/observatorio/app:vN --gcs-source-staging-dir gs://<proyecto>-datos/cloudbuild-fuentes .
+```
+
+Luego se actualiza `imagen` en `infra/terraform/terraform.tfvars` y se aplica con
+`terraform apply`. El estado de Terraform vive en un bucket GCS versionado.
 
 ## Documentación
 

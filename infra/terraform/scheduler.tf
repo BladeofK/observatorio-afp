@@ -17,9 +17,9 @@ resource "google_cloud_scheduler_job" "etl_diario" {
   time_zone        = "America/Santiago"
   attempt_deadline = "320s"
 
-  retry_config {
-    retry_count = 0 # Sin reintentos automáticos: un fallo se revisa, no se repite en bucle
-  }
+  # Sin bloque retry_config a propósito: el valor por defecto de Scheduler ya es 0 reintentos
+  # (un fallo se revisa, no se repite en bucle). Declararlo explícito causa un diff
+  # permanente, porque la API no guarda el valor por defecto.
 
   http_target {
     http_method = "POST"

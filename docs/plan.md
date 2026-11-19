@@ -51,18 +51,24 @@ cambia los conteos.
 
 ## Fase 3: Despliegue del ETL (días 11–13)
 
-- [ ] Build de la imagen y push a Artifact Registry.
-- [ ] Cloud Run Job + Cloud Scheduler diario vía Terraform.
-- [ ] Logs estructurados (JSON) para verlos filtrados en Cloud Logging.
+- [x] Build de la imagen con **Cloud Build** (sin Docker local) y push a Artifact Registry
+      (83 MB, 17 % de la capa gratuita).
+- [x] Cloud Run Job + Cloud Scheduler diario (08:00, hora de Chile) vía Terraform.
+- [x] Ejecución manual del job en la nube: completa, con logs estructurados (JSON) en Cloud
+      Logging.
+- [x] Estado de Terraform migrado a un bucket GCS versionado.
+- [ ] Confirmar la primera ejecución automática del Scheduler (al día siguiente, 08:00).
 
 **Término:** el job corre solo cada mañana y gold amanece actualizado.
 
 ## Fase 4: API y LLM (días 14–19)
 
-- [ ] Endpoints de lectura con consultas parametrizadas.
-- [ ] `/preguntar` con las 7 barreras del diseño y tests de cada barrera.
-- [ ] Límite de solicitudes por IP y tope diario de preguntas.
-- [ ] Despliegue en Cloud Run (`min=0`, `max=1`).
+- [x] Endpoints de lectura con consultas parametrizadas (desplegados en la fase 3).
+- [x] `/preguntar` con las 7 barreras del diseño y tests de cada barrera.
+- [x] Límite de solicitudes por IP y tope diario de preguntas.
+- [x] Despliegue en Cloud Run (`min=0`, `max=1`); `/preguntar` responde 503 hasta activar
+      Gemini.
+- [ ] Cargar la API key en Secret Manager y activar `usar_gemini`.
 - [ ] Probar preguntas maliciosas: `DROP TABLE`, leer silver, consultas sin límite.
 
 **Término:** API pública documentada en `/docs`; el LLM responde preguntas reales y rechaza las

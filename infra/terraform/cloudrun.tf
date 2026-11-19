@@ -65,6 +65,13 @@ resource "google_cloud_run_v2_service" "api" {
     }
   }
 
+  # La API de Cloud Run devuelve un bloque `scaling` a nivel de servicio con valores en 0,
+  # lo que genera un diff permanente. Se ignora solo ese bloque: el límite de costo real
+  # (máximo 1 instancia) está en template.scaling y sigue controlado por Terraform.
+  lifecycle {
+    ignore_changes = [scaling]
+  }
+
   depends_on = [google_project_service.apis, google_secret_manager_secret_iam_member.api_gemini]
 }
 

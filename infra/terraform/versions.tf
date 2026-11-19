@@ -16,8 +16,16 @@ terraform {
     }
   }
 
-  # Estado local (archivo terraform.tfstate, excluido de git).
-  # Mejora opcional: backend "gcs" en un bucket del propio proyecto.
+  # Estado remoto en GCS: no depende del disco local y queda versionado (5 versiones
+  # anteriores). El bucket se crea a mano una sola vez, antes del primer init, porque
+  # Terraform no puede guardar su estado en un bucket que él mismo aún no creó:
+  #   gcloud.cmd storage buckets create gs://<proyecto>-tfstate --location us-central1 \
+  #     --uniform-bucket-level-access --public-access-prevention --soft-delete-duration 0
+  #   gcloud.cmd storage buckets update gs://<proyecto>-tfstate --versioning
+  backend "gcs" {
+    bucket = "observatorio-afp-tfstate"
+    prefix = "terraform/estado"
+  }
 }
 
 # user_project_override + billing_project: necesarios para la API de presupuestos

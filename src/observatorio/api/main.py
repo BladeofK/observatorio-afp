@@ -90,7 +90,10 @@ class RespuestaLLM(BaseModel):
 
 @app.post("/preguntar", response_model=RespuestaLLM)
 def preguntar(cuerpo: Pregunta, request: Request) -> RespuestaLLM:
-    from observatorio.llm.texto_a_sql import PreguntaNoAplica, responder
+    from observatorio.llm.texto_a_sql import LLMNoDisponible, PreguntaNoAplica, responder
+
+    if not get_settings().gemini_api_key:
+        raise HTTPException(status_code=503, detail="El asistente con IA aún no está configurado.")
 
     # Cloud Run entrega la IP original en X-Forwarded-For.
     reenviada = request.headers.get("x-forwarded-for", "")
@@ -108,5 +111,7 @@ def preguntar(cuerpo: Pregunta, request: Request) -> RespuestaLLM:
         raise HTTPException(status_code=422, detail=f"Consulta rechazada: {error}") from error
     except bq.ConsultaDemasiadoCara as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    except LLMNoDisponible as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
     return RespuestaLLM(respuesta=resultado.respuesta, sql=resultado.sql, filas=resultado.filas)

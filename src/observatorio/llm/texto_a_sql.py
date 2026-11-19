@@ -57,6 +57,10 @@ class Respuesta:
     respuesta: str
 
 
+class LLMNoDisponible(RuntimeError):
+    """Gemini no está configurado o no respondió (p. ej. cuota gratuita agotada)."""
+
+
 @lru_cache
 def _cliente_gemini():
     from google import genai
@@ -65,8 +69,20 @@ def _cliente_gemini():
 
 
 def _generar(prompt: str) -> str:
+    from google.genai import errors
+
     s = get_settings()
-    resultado = _cliente_gemini().models.generate_content(model=s.gemini_model, contents=prompt)
+    if not s.gemini_api_key:
+        raise LLMNoDisponible("El asistente con IA aún no está configurado.")
+    try:
+        resultado = _cliente_gemini().models.generate_content(
+            model=s.gemini_model, contents=prompt
+        )
+    except errors.APIError as error:
+        # 429 = cuota gratuita agotada. Nunca hay cobro: la key no tiene facturación.
+        raise LLMNoDisponible(
+            f"El asistente con IA no está disponible ahora (código {error.code})."
+        ) from error
     return (resultado.text or "").strip()
 
 
