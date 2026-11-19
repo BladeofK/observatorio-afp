@@ -1,4 +1,7 @@
-# Dispara el job ETL todos los días a las 08:00 (hora de Chile).
+# Dispara el job ETL todos los días a las 21:00 (hora de Chile).
+# La Superintendencia publica el valor cuota de cada día durante el día siguiente, después
+# de las 08:00: correr en la noche carga lo publicado ese mismo día (a las 08:00 los datos
+# quedaban un día atrasados).
 # Capa gratuita: 3 jobs de Scheduler por cuenta de facturación; aquí se usa 1.
 
 resource "google_cloud_run_v2_job_iam_member" "scheduler_ejecuta_etl" {
@@ -13,7 +16,7 @@ resource "google_cloud_scheduler_job" "etl_diario" {
   count            = local.desplegar ? 1 : 0
   name             = "observatorio-etl-diario"
   region           = var.region
-  schedule         = "0 8 * * *"
+  schedule         = "0 21 * * *"
   time_zone        = "America/Santiago"
   attempt_deadline = "320s"
 

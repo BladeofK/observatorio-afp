@@ -53,11 +53,13 @@ cambia los conteos.
 
 - [x] Build de la imagen con **Cloud Build** (sin Docker local) y push a Artifact Registry
       (83 MB, 17 % de la capa gratuita).
-- [x] Cloud Run Job + Cloud Scheduler diario (08:00, hora de Chile) vía Terraform.
+- [x] Cloud Run Job + Cloud Scheduler diario vía Terraform (primero a las 08:00; movido a
+      las 21:00 de Chile porque la fuente publica cada valor durante el día siguiente).
 - [x] Ejecución manual del job en la nube: completa, con logs estructurados (JSON) en Cloud
       Logging.
 - [x] Estado de Terraform migrado a un bucket GCS versionado.
-- [ ] Confirmar la primera ejecución automática del Scheduler (al día siguiente, 08:00).
+- [x] Primera ejecución automática confirmada (2026-11-19, 08:00): éxito en 3 minutos, gold
+      actualizado y un corte de mindicador.cl superado por los reintentos.
 
 **Término:** el job corre solo cada mañana y gold amanece actualizado.
 

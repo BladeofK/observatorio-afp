@@ -11,7 +11,7 @@ Funciona **dentro de la capa gratuita de Google Cloud**, con límites duros que 
 gastar dinero ([blindaje de costos](docs/blindaje-costos.md)).
 
 **API en vivo:** https://observatorio-api-wmd2qz6utq-uc.a.run.app/docs
-· datos desde enero de 2020, actualizados cada mañana a las 08:00 (hora de Chile).
+· datos desde enero de 2020, actualizados cada noche a las 21:00 (hora de Chile).
 
 ## Ejemplo: preguntas en lenguaje natural
 
@@ -41,7 +41,7 @@ flowchart LR
         MI["mindicador.cl<br/>UF y dólar"]
     end
 
-    SCH["Cloud Scheduler<br/>diario 08:00"] -->|"dispara"| JOB
+    SCH["Cloud Scheduler<br/>diario 21:00"] -->|"dispara"| JOB
 
     subgraph etl["Cloud Run Job: ETL en Python"]
         JOB["extraer, validar y cargar"]
