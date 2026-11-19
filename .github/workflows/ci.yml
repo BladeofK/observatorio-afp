@@ -70,11 +70,24 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
+      - name: Autorizar Docker en Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Caché de capas en GitHub Actions (gratis, no ocupa espacio en GCP): la capa de
+      # dependencias se reutiliza idéntica entre commits, así que Artifact Registry la guarda
+      # una sola vez y cada imagen nueva agrega solo unos KB.
+      # provenance: false evita manifiestos extra de atestación sin tag en el registro.
       - name: Construir y subir la imagen
-        run: |
-          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
-          docker build -t "$IMAGEN" .
-          docker push "$IMAGEN"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGEN }}
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Desplegar la API
         run: gcloud run deploy observatorio-api --image "$IMAGEN" --region "$REGION" --quiet
