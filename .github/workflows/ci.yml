@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+# Por defecto, el workflow solo puede leer el repositorio.
+permissions:
+  contents: read
+
 jobs:
   calidad:
     runs-on: ubuntu-latest
@@ -38,3 +42,47 @@ jobs:
         run: |
           terraform init -backend=false
           terraform validate
+
+  # Despliegue automático: solo en push a main, solo si calidad y terraform pasaron, y solo
+  # si el repositorio tiene configuradas las variables de GCP (un fork no despliega nada).
+  # Autenticación con Workload Identity Federation: sin llaves JSON guardadas en GitHub.
+  desplegar:
+    needs: [calidad, terraform]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.GCP_WIF_PROVIDER != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Necesario para pedir el token OIDC que GCP valida
+    concurrency:
+      group: desplegar
+      cancel-in-progress: false
+    env:
+      REGION: us-central1
+      IMAGEN: us-central1-docker.pkg.dev/${{ vars.GCP_PROYECTO }}/observatorio/app:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Autenticar en GCP (sin llaves)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Construir y subir la imagen
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build -t "$IMAGEN" .
+          docker push "$IMAGEN"
+
+      - name: Desplegar la API
+        run: gcloud run deploy observatorio-api --image "$IMAGEN" --region "$REGION" --quiet
+
+      - name: Actualizar el job ETL
+        run: gcloud run jobs update observatorio-etl --image "$IMAGEN" --region "$REGION" --quiet
+
+      - name: Verificar la API desplegada
+        run: |
+          URL=$(gcloud run services describe observatorio-api --region "$REGION" --format='value(status.url)')
+          curl --fail --silent --show-error --retry 3 "$URL/salud"

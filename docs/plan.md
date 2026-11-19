@@ -79,10 +79,13 @@ maliciosas.
 
 ## Fase 5: Calidad profesional (días 20–23)
 
-- [ ] GitHub Actions: lint + tests en cada push (ya incluido en `ci.yml`).
-- [ ] Despliegue automático con Workload Identity Federation (sin llaves JSON).
-- [ ] README final: diagrama, GIF de demo, decisiones técnicas y costos reales del mes.
-- [ ] Badge de CI y enlace a la API en vivo.
+- [x] GitHub Actions: lint, tests y validación de Terraform en cada push.
+- [x] Despliegue automático con Workload Identity Federation (sin llaves JSON), restringido
+      al repositorio y a la rama `main`.
+- [x] README final: ejemplo real de `/preguntar`, diagrama, tabla de lo que demuestra el
+      proyecto y costos medidos.
+- [x] Badge de CI y enlace a la API en vivo.
+- [ ] (Opcional) GIF o capturas de la API en `/docs` para el README.
 
 ## Fase 6: Extras opcionales (plus de la oferta)
 

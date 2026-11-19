@@ -75,11 +75,13 @@ resource "google_cloud_run_v2_service" "api" {
     }
   }
 
-  # La API de Cloud Run devuelve un bloque `scaling` a nivel de servicio con valores en 0,
-  # lo que genera un diff permanente. Se ignora solo ese bloque: el límite de costo real
-  # (máximo 1 instancia) está en template.scaling y sigue controlado por Terraform.
+  # - scaling: la API de Cloud Run devuelve un bloque `scaling` a nivel de servicio con
+  #   valores en 0, lo que genera un diff permanente. El límite de costo real (máximo 1
+  #   instancia) está en template.scaling y sigue controlado por Terraform.
+  # - image: tras la creación, la imagen la despliega GitHub Actions (una por commit).
+  #   var.imagen solo se usa para crear el servicio la primera vez.
   lifecycle {
-    ignore_changes = [scaling]
+    ignore_changes = [scaling, template[0].containers[0].image]
   }
 
   depends_on = [google_project_service.apis, google_secret_manager_secret_iam_member.api_gemini]
@@ -129,6 +131,11 @@ resource "google_cloud_run_v2_job" "etl" {
         }
       }
     }
+  }
+
+  # Tras la creación, la imagen la despliega GitHub Actions (ver comentario en la API).
+  lifecycle {
+    ignore_changes = [template[0].template[0].containers[0].image]
   }
 
   depends_on = [google_project_service.apis]

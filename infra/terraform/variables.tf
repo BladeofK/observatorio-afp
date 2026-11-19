@@ -42,6 +42,16 @@ variable "bq_cuota_diaria_mib" {
   }
 }
 
+variable "repositorio_github" {
+  description = "Repositorio autorizado a desplegar (formato propietario/nombre), p. ej. usuario/observatorio-afp."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.repositorio_github))
+    error_message = "Usa el formato propietario/nombre."
+  }
+}
+
 variable "imagen" {
   description = "Imagen Docker de la app. Mientras sea null no se crean Cloud Run ni Scheduler."
   type        = string

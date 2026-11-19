@@ -7,7 +7,10 @@ cuenta_facturacion = "000000-000000-000000"
 moneda            = "USD"
 monto_presupuesto = 1
 
-# Fase 3: después del primer docker push, descomenta y completa.
+# Repositorio de GitHub autorizado a desplegar (propietario/nombre).
+repositorio_github = "tu-usuario/observatorio-afp"
+
+# Fase 3: después del primer build con Cloud Build, descomenta y completa.
 # imagen = "us-central1-docker.pkg.dev/observatorio-afp-xxxx/observatorio/app:v1"
 
 # Fase 4: después de cargar la API key de Gemini en Secret Manager.
