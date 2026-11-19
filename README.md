@@ -36,32 +36,32 @@ recibe `422`. El SQL generado por el modelo nunca se ejecuta sin pasar
 
 ```mermaid
 flowchart LR
-    subgraph Fuentes públicas
-        SP[Superintendencia de Pensiones<br/>valor cuota]
-        MI[mindicador.cl<br/>UF · dólar]
+    subgraph fuentes["Fuentes públicas"]
+        SP["Superintendencia de Pensiones<br/>valor cuota"]
+        MI["mindicador.cl<br/>UF y dólar"]
     end
 
-    SCH[Cloud Scheduler<br/>diario 08:00] -->|dispara| JOB
+    SCH["Cloud Scheduler<br/>diario 08:00"] -->|"dispara"| JOB
 
-    subgraph Cloud Run Job · ETL Python
-        JOB[extraer → validar → cargar]
+    subgraph etl["Cloud Run Job: ETL en Python"]
+        JOB["extraer, validar y cargar"]
     end
 
     SP --> JOB
     MI --> JOB
-    JOB -->|archivo crudo| GCS[(GCS<br/>bronze/)]
-    JOB -->|load job gratuito| B[(BigQuery<br/>bronze)]
-    B -->|MERGE idempotente| S[(silver<br/>tipado y deduplicado)]
-    S -->|CREATE OR REPLACE| G[(gold<br/>rentabilidades y ranking)]
+    JOB -->|"archivo crudo"| GCS[("GCS<br/>bronze/")]
+    JOB -->|"load job gratuito"| B[("BigQuery<br/>bronze")]
+    B -->|"MERGE idempotente"| S[("silver<br/>tipado y deduplicado")]
+    S -->|"CREATE OR REPLACE"| G[("gold<br/>rentabilidades y ranking")]
 
-    subgraph Cloud Run Service · FastAPI
-        API[/fondos · /indicadores · /preguntar/]
+    subgraph api["Cloud Run Service: FastAPI"]
+        API["/fondos, /indicadores, /preguntar"]
     end
 
     G --> API
-    API <-->|texto → SQL<br/>con barreras| LLM[Gemini API<br/>capa gratuita]
+    API <-->|"texto a SQL<br/>con barreras"| LLM["Gemini API<br/>capa gratuita"]
 
-    GH[GitHub Actions<br/>lint · tests · terraform] -->|Workload Identity<br/>sin llaves| API
+    GH["GitHub Actions<br/>lint, tests y terraform"] -->|"Workload Identity<br/>sin llaves"| API
 ```
 
 ## Lo que demuestra este proyecto

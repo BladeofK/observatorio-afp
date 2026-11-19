@@ -80,8 +80,9 @@ resource "google_cloud_run_v2_service" "api" {
   #   instancia) está en template.scaling y sigue controlado por Terraform.
   # - image: tras la creación, la imagen la despliega GitHub Actions (una por commit).
   #   var.imagen solo se usa para crear el servicio la primera vez.
+  # - client y client_version: gcloud anota qué herramienta hizo el último despliegue.
   lifecycle {
-    ignore_changes = [scaling, template[0].containers[0].image]
+    ignore_changes = [scaling, template[0].containers[0].image, client, client_version]
   }
 
   depends_on = [google_project_service.apis, google_secret_manager_secret_iam_member.api_gemini]
@@ -135,7 +136,7 @@ resource "google_cloud_run_v2_job" "etl" {
 
   # Tras la creación, la imagen la despliega GitHub Actions (ver comentario en la API).
   lifecycle {
-    ignore_changes = [template[0].template[0].containers[0].image]
+    ignore_changes = [template[0].template[0].containers[0].image, client, client_version]
   }
 
   depends_on = [google_project_service.apis]
