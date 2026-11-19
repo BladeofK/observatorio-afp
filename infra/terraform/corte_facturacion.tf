@@ -23,6 +23,13 @@ resource "google_project_iam_member" "corte_invoker" {
   member  = "serviceAccount:${google_service_account.corte_facturacion.email}"
 }
 
+# Eventarc exige que la cuenta del disparador pueda recibir eventos.
+resource "google_project_iam_member" "corte_event_receiver" {
+  project = var.proyecto_id
+  role    = "roles/eventarc.eventReceiver"
+  member  = "serviceAccount:${google_service_account.corte_facturacion.email}"
+}
+
 resource "google_storage_bucket" "fuentes_funciones" {
   name                        = "${var.proyecto_id}-fuentes-funciones"
   location                    = upper(var.region)
@@ -86,5 +93,6 @@ resource "google_cloudfunctions2_function" "corte_facturacion" {
     google_project_service.apis,
     google_project_iam_member.corte_billing_manager,
     google_project_iam_member.corte_invoker,
+    google_project_iam_member.corte_event_receiver,
   ]
 }

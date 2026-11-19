@@ -2,6 +2,8 @@
 -- rent_real_12m = (vc / vc_hace_12m) / (uf / uf_hace_12m) - 1
 -- Los LAG solo se usan si el mes anterior existe de verdad (sin huecos en la serie).
 -- El mes en curso usa el último valor disponible, por lo que es un cierre parcial.
+-- La UF se toma del MISMO día que el valor cuota de cierre (no del cierre del mes), para
+-- que ambos lados de la deflactación correspondan a la misma fecha.
 
 CREATE OR REPLACE TABLE `$proyecto.$gold.rentabilidad_mensual`
 CLUSTER BY fondo, afp
@@ -12,13 +14,14 @@ WITH cierre AS (
     DATE_TRUNC(fecha, MONTH) AS mes,
     afp,
     fondo,
+    MAX(fecha) AS fecha_cierre,
     ARRAY_AGG(valor_cuota ORDER BY fecha DESC LIMIT 1)[OFFSET(0)] AS vc
   FROM `$proyecto.$silver.valor_cuota`
   GROUP BY mes, afp, fondo
 ),
 uf AS (
-  SELECT mes, valor_cierre AS uf
-  FROM `$proyecto.$gold.indicadores_mensual`
+  SELECT fecha AS fecha_cierre, valor AS uf
+  FROM `$proyecto.$silver.indicadores`
   WHERE indicador = 'uf'
 ),
 con_rezagos AS (
@@ -30,7 +33,7 @@ con_rezagos AS (
     LAG(c.vc, 12)  OVER w AS vc_12,
     LAG(u.uf, 12)  OVER w AS uf_12
   FROM cierre AS c
-  LEFT JOIN uf AS u USING (mes)
+  LEFT JOIN uf AS u USING (fecha_cierre)
   WINDOW w AS (PARTITION BY c.afp, c.fondo ORDER BY c.mes)
 )
 SELECT

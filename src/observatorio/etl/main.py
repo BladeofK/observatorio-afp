@@ -1,8 +1,9 @@
 """Punto de entrada del job ETL (Cloud Run Job o local).
 
 Uso:
+    python -m observatorio.etl.main probar                # descarga y valida, sin GCP
     python -m observatorio.etl.main setup                 # crea tablas bronze y silver
-    python -m observatorio.etl.main ingestar              # extrae y carga bronze (últimos días)
+    python -m observatorio.etl.main ingestar              # carga bronze desde el mes anterior
     python -m observatorio.etl.main ingestar --desde 2022-01-01   # backfill
     python -m observatorio.etl.main transformar           # bronze → silver → gold
     python -m observatorio.etl.main diario                # ingestar + transformar
@@ -20,8 +21,15 @@ from observatorio.etl import calidad, carga, transformar
 from observatorio.etl.fuentes import indicadores, valor_cuota
 from observatorio.etl.normalizar import a_fecha
 
-# El job diario recarga los últimos días por si la fuente corrigió datos recientes.
-DIAS_RECARGA_DIARIA = 10
+
+def inicio_recarga_diaria(hoy: date) -> date:
+    """Primer día del mes anterior.
+
+    La Superintendencia publica valores provisorios y los confirma al mes siguiente. Recargar
+    desde el mes anterior asegura que silver reemplace los provisorios por los confirmados.
+    """
+    primero_mes_actual = hoy.replace(day=1)
+    return (primero_mes_actual - timedelta(days=1)).replace(day=1)
 
 log = logging.getLogger("observatorio.etl")
 
@@ -66,9 +74,11 @@ def _en_rango(filas: list[dict[str, str]], desde: date, hasta: date) -> list[dic
 
 def ingestar(desde: date, hasta: date) -> None:
     hoy = date.today()
+    fecconf = valor_cuota.obtener_fecconf()
+    log.info("Fecha de corte de confirmación en la fuente: %s", fecconf)
 
     for fondo in valor_cuota.FONDOS:
-        extraccion = valor_cuota.extraer(fondo, desde, hasta)
+        extraccion = valor_cuota.extraer(fondo, desde, hasta, fecconf)
         filas = _en_rango(extraccion.filas, desde, hasta)
         _revisar(f"valor_cuota {fondo}", calidad.validar_valor_cuota(filas))
         ruta = carga.guardar_crudo("valor_cuota", extraccion, hoy)
@@ -85,17 +95,43 @@ def ingestar(desde: date, hasta: date) -> None:
             log.info("%s %d: %d filas a bronze", indicador, anio, n)
 
 
+def probar(desde: date, hasta: date) -> None:
+    """Descarga y valida las fuentes SIN tocar GCP. Útil para revisar en local."""
+    fecconf = valor_cuota.obtener_fecconf()
+    log.info("Fecha de corte de confirmación en la fuente: %s", fecconf)
+    for fondo in valor_cuota.FONDOS:
+        filas = _en_rango(valor_cuota.extraer(fondo, desde, hasta, fecconf).filas, desde, hasta)
+        reporte = calidad.validar_valor_cuota(filas)
+        estados = {e: sum(f["estado"] == e for f in filas) for e in ("confirmado", "provisorio")}
+        log.info(
+            "valor_cuota fondo %s: %d filas %s, %d errores, %d advertencias",
+            fondo, len(filas), estados, len(reporte.errores), len(reporte.advertencias),
+        )
+        _revisar(f"valor_cuota {fondo}", reporte)
+    for indicador in indicadores.INDICADORES:
+        for anio in range(desde.year, hasta.year + 1):
+            filas = _en_rango(indicadores.extraer(indicador, anio).filas, desde, hasta)
+            reporte = calidad.validar_indicadores(filas)
+            log.info("%s %d: %d filas, %d errores", indicador, anio, len(filas),
+                     len(reporte.errores))
+            _revisar(f"{indicador} {anio}", reporte)
+
+
 def main(argv: list[str] | None = None) -> None:
     _configurar_logs()
     parser = argparse.ArgumentParser(description="ETL Observatorio AFP")
-    parser.add_argument("comando", choices=["setup", "ingestar", "transformar", "diario"])
+    parser.add_argument(
+        "comando", choices=["probar", "setup", "ingestar", "transformar", "diario"]
+    )
     parser.add_argument("--desde", type=date.fromisoformat, default=None)
     parser.add_argument("--hasta", type=date.fromisoformat, default=None)
     args = parser.parse_args(argv)
 
     hasta = args.hasta or date.today()
-    desde = args.desde or hasta - timedelta(days=DIAS_RECARGA_DIARIA)
+    desde = args.desde or inicio_recarga_diaria(hasta)
 
+    if args.comando == "probar":
+        probar(desde, hasta)
     if args.comando == "setup":
         transformar.ejecutar_directorio("ddl")
     if args.comando in ("ingestar", "diario"):

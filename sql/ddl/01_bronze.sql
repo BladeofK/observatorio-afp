@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS `$proyecto.$bronze.valor_cuota_raw` (
   afp            STRING,
   fecha          STRING,
   valor_cuota    STRING,
-  patrimonio     STRING
+  patrimonio     STRING,
+  estado         STRING  -- 'confirmado' o 'provisorio', según el bloque de la fuente
 )
 PARTITION BY fecha_ingesta
 OPTIONS (

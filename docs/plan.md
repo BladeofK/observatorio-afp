@@ -11,35 +11,40 @@ completo para el portafolio.
 
 ## Fase 0: Cuenta y blindaje de costos (día 1)
 
-- [ ] Crear el proyecto GCP `observatorio-afp-<sufijo>` y vincular la cuenta de facturación.
-- [ ] Crear un **proyecto aparte, sin facturación**, solo para la API key de Gemini (AI Studio).
-- [ ] Revisar la moneda de la cuenta de facturación (USD o CLP) y ajustar `terraform.tfvars`.
-- [ ] Aplicar **solo** el blindaje con `terraform apply -target=...` (comando exacto en
+- [x] Crear el proyecto GCP (sin organización) y vincular la cuenta de facturación.
+- [x] Crear un **proyecto aparte, sin facturación**, solo para la API key de Gemini (AI Studio).
+- [x] Revisar la moneda de la cuenta de facturación (CLP) y ajustar `terraform.tfvars`.
+- [x] Aplicar **solo** el blindaje con `terraform apply -target=...` (comando exacto en
       [blindaje-costos.md](blindaje-costos.md#orden-de-despliegue-fase-0)).
-- [ ] Probar el corte: publicar un mensaje falso en el tópico (ver
-      [blindaje-costos.md](blindaje-costos.md#probar-el-corte)) en un proyecto de prueba.
+- [x] Probar la cadena alerta → Pub/Sub → función con un gasto simulado bajo el presupuesto.
+- [ ] (Opcional) Probar el corte real con un gasto simulado sobre el presupuesto: desvincula
+      la facturación y hay que volver a vincularla a mano.
 
 **Término:** presupuesto, alertas, cuota de BigQuery y corte automático activos y probados.
 
 ## Fase 1: Explorar fuentes y ETL local (días 2–5)
 
-- [ ] Descargar manualmente los archivos de valor cuota y **confirmar el formato real**
-      (separador, decimales, encabezados). Ajustar `etl/fuentes/valor_cuota.py` y su fixture.
-- [ ] Ingesta de indicadores desde mindicador.cl (UF y dólar).
-- [ ] Parseo a formato largo y reglas de calidad (`etl/calidad.py`).
-- [ ] Tests unitarios de parsers y calidad con archivos de ejemplo en `tests/fixtures/`.
+- [x] Descargar los archivos de valor cuota y **confirmar el formato real**: encabezado de dos
+      filas, un bloque por año, bloque final de valores provisorios y `fecconf` leído del sitio.
+- [x] Ingesta de indicadores desde mindicador.cl (UF y dólar), con reintentos ante cortes.
+- [x] Parseo a formato largo y reglas de calidad (`etl/calidad.py`).
+- [x] Tests unitarios de parsers y calidad con un extracto real en `tests/fixtures/`.
+- [x] `python -m observatorio.etl.main probar --desde 2022-01-01`: 62 370 filas de valor cuota
+      e indicadores 2022–2026 validados sin errores.
 
 **Término:** `uv run pytest` en verde y el ETL imprime filas válidas en local, sin GCP.
 
 ## Fase 2: Medallón en BigQuery (días 6–10)
 
-- [ ] `terraform apply` de datasets, bucket y cuentas de servicio.
-- [ ] `python -m observatorio.etl.main setup` crea tablas bronze y silver (DDL).
-- [ ] Carga a GCS y bronze con load jobs.
-- [ ] `MERGE` bronze → silver; probar idempotencia ejecutando dos veces el mismo día.
-- [ ] Tablas gold con rentabilidad nominal y real.
-- [ ] Carga histórica (backfill) de al menos 3 años.
-- [ ] Revisar en "Información de ejecución" de BigQuery los bytes escaneados por consulta.
+- [x] `terraform apply` de datasets, bucket y cuentas de servicio.
+- [x] `python -m observatorio.etl.main setup` crea tablas bronze y silver (DDL).
+- [x] Carga a GCS y bronze con load jobs.
+- [x] `MERGE` bronze → silver; idempotencia probada: tras recargar, silver sigue con 87 955
+      filas y 0 duplicados.
+- [x] Tablas gold con rentabilidad nominal y real (verificada a mano contra silver).
+- [x] Carga histórica desde 2020-01-01 (casi 7 años).
+- [x] Bytes escaneados: 350 MiB en el día de la carga completa (0,03 % del TiB gratuito);
+      máximo 30 MiB por consulta.
 
 **Término:** `python -m observatorio.etl.main diario` deja gold poblado, y repetirlo no
 cambia los conteos.

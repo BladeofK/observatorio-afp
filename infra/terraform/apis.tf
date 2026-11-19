@@ -7,6 +7,7 @@ locals {
     "cloudbilling.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudfunctions.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
     "cloudscheduler.googleapis.com",
     "eventarc.googleapis.com",
     "iam.googleapis.com",

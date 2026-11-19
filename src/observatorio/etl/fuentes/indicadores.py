@@ -9,10 +9,8 @@ from __future__ import annotations
 
 import json
 
-import httpx
-
 from observatorio.config import get_settings
-from observatorio.etl.fuentes import Extraccion
+from observatorio.etl.fuentes import Extraccion, descargar
 
 INDICADORES = ("uf", "dolar")
 
@@ -29,9 +27,7 @@ def extraer(indicador: str, anio: int) -> Extraccion:
     if indicador not in INDICADORES:
         raise ValueError(f"Indicador no soportado: {indicador}")
     url = get_settings().url_mindicador.format(indicador=indicador, anio=anio)
-    respuesta = httpx.get(url, timeout=60, follow_redirects=True)
-    respuesta.raise_for_status()
-    contenido = respuesta.content
+    contenido = descargar(url)
     return Extraccion(
         nombre_archivo=f"{indicador}_{anio}.json",
         contenido=contenido,

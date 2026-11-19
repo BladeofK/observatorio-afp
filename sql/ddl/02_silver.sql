@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `$proyecto.$silver.valor_cuota` (
   fondo       STRING  NOT NULL,
   valor_cuota NUMERIC NOT NULL,
   patrimonio  NUMERIC,
+  estado      STRING,  -- 'confirmado' o 'provisorio' (sujeto a confirmación oficial)
   ingesta_ts  TIMESTAMP
 )
 PARTITION BY DATE_TRUNC(fecha, MONTH)

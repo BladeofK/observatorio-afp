@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date
+from decimal import Decimal
 
 from observatorio.etl.normalizar import a_fecha, a_numero, a_numero_chileno, nombre_afp
 
@@ -25,11 +26,41 @@ class Reporte:
         return not self.errores
 
 
+class Duplicados:
+    """Cuenta apariciones por clave y los valores distintos vistos en cada una.
+
+    - Duplicado exacto (misma clave, mismo valor): advertencia; silver deduplica.
+      Ocurre en la práctica: mindicador.cl repite el dólar del 2022-04-19.
+    - Duplicado contradictorio (misma clave, valores distintos): error.
+    """
+
+    def __init__(self) -> None:
+        self.conteo: Counter[tuple] = Counter()
+        self.valores: defaultdict[tuple, set[Decimal]] = defaultdict(set)
+
+    def agregar(self, clave: tuple, valor: Decimal) -> None:
+        self.conteo[clave] += 1
+        self.valores[clave].add(valor)
+
+    def reportar(self, nombre_clave: str, reporte: Reporte) -> None:
+        repetidas = [clave for clave, veces in self.conteo.items() if veces > 1]
+        contradictorias = sum(len(self.valores[clave]) > 1 for clave in repetidas)
+        exactas = len(repetidas) - contradictorias
+        if contradictorias:
+            reporte.errores.append(
+                f"{contradictorias} claves {nombre_clave} duplicadas con valores distintos"
+            )
+        if exactas:
+            reporte.advertencias.append(
+                f"{exactas} claves {nombre_clave} duplicadas con el mismo valor"
+            )
+
+
 def validar_valor_cuota(filas: list[dict[str, str]], hoy: date | None = None) -> Reporte:
     hoy = hoy or date.today()
     reporte = Reporte()
-    claves: Counter[tuple] = Counter()
-    series: dict[tuple[str, str], list[tuple[date, float]]] = defaultdict(list)
+    duplicados = Duplicados()
+    series: dict[tuple[str, str], dict[date, float]] = defaultdict(dict)
 
     for numero, fila in enumerate(filas, start=1):
         fecha = a_fecha(fila.get("fecha", ""))
@@ -45,24 +76,22 @@ def validar_valor_cuota(filas: list[dict[str, str]], hoy: date | None = None) ->
         if fecha > hoy:
             reporte.errores.append(f"Fila {numero}: fecha futura ({fecha})")
 
-        claves[(fecha, afp, fondo)] += 1
-        series[(afp, fondo)].append((fecha, float(valor)))
+        duplicados.agregar((fecha, afp, fondo), valor)
+        series[(afp, fondo)][fecha] = float(valor)
 
-    duplicadas = [clave for clave, veces in claves.items() if veces > 1]
-    if duplicadas:
-        reporte.errores.append(f"{len(duplicadas)} claves (fecha, afp, fondo) duplicadas")
+    duplicados.reportar("(fecha, afp, fondo)", reporte)
 
     for (afp, fondo), puntos in series.items():
-        puntos.sort()
-        for (_, anterior), (fecha, actual) in zip(puntos, puntos[1:], strict=False):
+        ordenados = sorted(puntos.items())
+        for (_, anterior), (fecha, actual) in zip(ordenados, ordenados[1:], strict=False):
             if anterior and abs(actual / anterior - 1) > VARIACION_DIARIA_MAXIMA:
                 reporte.advertencias.append(
                     f"{afp} fondo {fondo}: variación > {VARIACION_DIARIA_MAXIMA:.0%} el {fecha}"
                 )
 
-    if claves:
-        ultima = max(fecha for fecha, _, _ in claves)
-        presentes = {afp for fecha, afp, _ in claves if fecha == ultima}
+    if duplicados.conteo:
+        ultima = max(fecha for fecha, _, _ in duplicados.conteo)
+        presentes = {afp for fecha, afp, _ in duplicados.conteo if fecha == ultima}
         faltantes = AFP_ESPERADAS - presentes
         if faltantes:
             reporte.advertencias.append(
@@ -75,7 +104,7 @@ def validar_valor_cuota(filas: list[dict[str, str]], hoy: date | None = None) ->
 def validar_indicadores(filas: list[dict[str, str]], hoy: date | None = None) -> Reporte:
     hoy = hoy or date.today()
     reporte = Reporte()
-    claves: Counter[tuple] = Counter()
+    duplicados = Duplicados()
 
     for numero, fila in enumerate(filas, start=1):
         fecha = a_fecha(fila.get("fecha", ""))
@@ -88,9 +117,7 @@ def validar_indicadores(filas: list[dict[str, str]], hoy: date | None = None) ->
             reporte.errores.append(f"Fila {numero}: valor no positivo ({valor})")
         if fecha > hoy:
             reporte.errores.append(f"Fila {numero}: fecha futura ({fecha})")
-        claves[(fecha, indicador)] += 1
+        duplicados.agregar((fecha, indicador), valor)
 
-    duplicadas = [clave for clave, veces in claves.items() if veces > 1]
-    if duplicadas:
-        reporte.errores.append(f"{len(duplicadas)} claves (fecha, indicador) duplicadas")
+    duplicados.reportar("(fecha, indicador)", reporte)
     return reporte

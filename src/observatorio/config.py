@@ -28,12 +28,13 @@ class Settings(BaseSettings):
     llm_max_por_minuto_ip: int = 5
     llm_max_diario: int = 200
 
-    # Fuentes.
-    # POR CONFIRMAR (fase 1): URL y parámetros de descarga del valor cuota en spensiones.cl.
-    # Revisar la página de valores cuota y ajustar antes de la primera ingesta real.
+    # Fuentes (verificadas en noviembre de 2026).
+    url_pagina_valor_cuota: str = (
+        "https://www.spensiones.cl/apps/valoresCuotaFondo/vcfAFP.php?tf=A"
+    )
     url_valor_cuota: str = (
         "https://www.spensiones.cl/apps/valoresCuotaFondo/vcfAFPxls.php"
-        "?aaaaini={anio_ini}&aaaafin={anio_fin}&tf={fondo}&fecconf={fecha}"
+        "?aaaaini={anio_ini}&aaaafin={anio_fin}&tf={fondo}&fecconf={fecconf}"
     )
     url_mindicador: str = "https://mindicador.cl/api/{indicador}/{anio}"
 

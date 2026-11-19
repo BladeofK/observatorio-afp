@@ -18,6 +18,7 @@ USING (
       TRIM(fondo) AS fondo,
       SAFE_CAST(REPLACE(REPLACE(TRIM(valor_cuota), '.', ''), ',', '.') AS NUMERIC) AS valor_cuota,
       SAFE_CAST(REPLACE(REPLACE(TRIM(patrimonio), '.', ''), ',', '.') AS NUMERIC) AS patrimonio,
+      COALESCE(NULLIF(TRIM(estado), ''), 'confirmado') AS estado,
       ingesta_ts
     FROM `$proyecto.$bronze.valor_cuota_raw`
     WHERE fecha_ingesta >= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)
@@ -25,14 +26,27 @@ USING (
   SELECT *
   FROM tipado
   WHERE fecha IS NOT NULL AND valor_cuota IS NOT NULL AND afp != ''
-  -- Si el mismo dato llegó varias veces, gana la ingesta más reciente.
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY fecha, afp, fondo ORDER BY ingesta_ts DESC) = 1
+  -- Si el mismo dato llegó varias veces: gana el confirmado sobre el provisorio y, entre
+  -- iguales, la ingesta más reciente.
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY fecha, afp, fondo
+    ORDER BY IF(estado = 'confirmado', 0, 1), ingesta_ts DESC
+  ) = 1
 ) AS s
 ON t.fecha = s.fecha AND t.afp = s.afp AND t.fondo = s.fondo
-WHEN MATCHED AND (
-  t.valor_cuota IS DISTINCT FROM s.valor_cuota OR t.patrimonio IS DISTINCT FROM s.patrimonio
-) THEN
-  UPDATE SET valor_cuota = s.valor_cuota, patrimonio = s.patrimonio, ingesta_ts = s.ingesta_ts
+-- Un valor provisorio nunca reemplaza a uno ya confirmado.
+WHEN MATCHED
+  AND NOT (t.estado = 'confirmado' AND s.estado = 'provisorio')
+  AND (
+    t.valor_cuota IS DISTINCT FROM s.valor_cuota
+    OR t.patrimonio IS DISTINCT FROM s.patrimonio
+    OR t.estado IS DISTINCT FROM s.estado
+  ) THEN
+  UPDATE SET
+    valor_cuota = s.valor_cuota,
+    patrimonio = s.patrimonio,
+    estado = s.estado,
+    ingesta_ts = s.ingesta_ts
 WHEN NOT MATCHED THEN
-  INSERT (fecha, afp, fondo, valor_cuota, patrimonio, ingesta_ts)
-  VALUES (s.fecha, s.afp, s.fondo, s.valor_cuota, s.patrimonio, s.ingesta_ts);
+  INSERT (fecha, afp, fondo, valor_cuota, patrimonio, estado, ingesta_ts)
+  VALUES (s.fecha, s.afp, s.fondo, s.valor_cuota, s.patrimonio, s.estado, s.ingesta_ts);

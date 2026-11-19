@@ -57,11 +57,23 @@ alguien abuse de la API pública.
 
 Primero se aplica **solo** el blindaje; el resto de la infraestructura se crea después.
 
+Primero, habilitar las dos APIs que Terraform necesita para leer el proyecto (en proyectos
+nuevos vienen apagadas):
+
 ```powershell
-cd infra/terraform
-terraform init
-terraform apply -target="google_project_service.apis" -target="google_billing_budget.presupuesto" -target="google_cloudfunctions2_function.corte_facturacion" -target="google_service_usage_consumer_quota_override.bq_bytes_diarios"
+gcloud.cmd services enable cloudresourcemanager.googleapis.com serviceusage.googleapis.com --project TU_PROYECTO
 ```
+
+Luego, desde `infra/terraform` (cada argumento va completo entre comillas simples porque
+Windows PowerShell 5.1 corta los que tienen un punto después del `=`):
+
+```powershell
+terraform init
+terraform apply '-target=google_project_service.apis' '-target=google_billing_budget.presupuesto' '-target=google_cloudfunctions2_function.corte_facturacion' '-target=google_service_usage_consumer_quota_override.bq_bytes_diarios'
+```
+
+> En Windows, gcloud se invoca como `gcloud.cmd` para evitar el bloqueo de scripts `.ps1`
+> de PowerShell.
 
 Después de verificarlo, el resto:
 
@@ -76,7 +88,7 @@ mensaje simula que el gasto superó el presupuesto (las comillas van escapadas c
 Windows PowerShell 5.1 las elimina al pasarlas a programas externos):
 
 ```powershell
-gcloud pubsub topics publish alertas-presupuesto --message='{\"costAmount\": 2.0, \"budgetAmount\": 1.0}'
+gcloud.cmd pubsub topics publish alertas-presupuesto --message='{\"costAmount\": 2.0, \"budgetAmount\": 1.0}'
 ```
 
 Luego revisa en Facturación que el proyecto quedó **sin cuenta de facturación vinculada**, y

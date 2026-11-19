@@ -24,7 +24,10 @@ Responder con datos públicos y actualizados preguntas como:
 
 ## 3. Flujo del ETL (job diario)
 
-1. **Extraer**: descarga el archivo de cada fuente (valor cuota por tipo de fondo, UF, dólar).
+1. **Extraer**: descarga el archivo de cada fuente (valor cuota por tipo de fondo, UF, dólar),
+   con reintentos y espera creciente ante cortes. El job diario recarga **desde el primer día
+   del mes anterior**: la Superintendencia publica valores *provisorios* y los confirma al mes
+   siguiente, y así silver siempre termina con la versión confirmada.
 2. **Bronze, GCS**: guarda el archivo tal como llegó en
    `gs://<bucket>/bronze/<fuente>/fecha_ingesta=YYYY-MM-DD/<archivo>`. Es la fuente de verdad:
    si cambia la lógica, se reprocesa desde aquí sin volver a descargar.
@@ -52,6 +55,14 @@ Responder con datos públicos y actualizados preguntas como:
 | fecha | STRING | Sin convertir |
 | valor_cuota | STRING | Sin convertir (coma decimal) |
 | patrimonio | STRING | Sin convertir |
+| estado | STRING | `confirmado` o `provisorio`, según el bloque del archivo |
+
+**Formato real de la fuente** (verificado en noviembre de 2026): texto separado por `;`, un
+bloque por año con encabezado de dos filas (AFP / "Valor Cuota" y "Valor Patrimonio"), valor
+cuota con coma decimal y punto de miles, patrimonio entero sin separadores. Las AFP cambian
+según el año (en 2010 no existían Modelo ni Uno). El último bloque trae los días aún no
+confirmados. El parámetro `fecconf` (fecha de corte de la confirmación) se lee de la página
+del sitio: pasar otra fecha cambia las etiquetas sin que los valores estén confirmados.
 
 `bronze.indicadores_raw`: `fecha_ingesta`, `ingesta_ts`, `archivo_origen`, `indicador`,
 `fecha`, `valor`, todos los datos en STRING.
@@ -59,8 +70,9 @@ Responder con datos públicos y actualizados preguntas como:
 ### Silver (limpio, tipado, único)
 
 `silver.valor_cuota`: `fecha DATE`, `afp STRING`, `fondo STRING`, `valor_cuota NUMERIC`,
-`patrimonio NUMERIC`, `ingesta_ts TIMESTAMP`.
-Clave única: `(fecha, afp, fondo)`. Partición mensual `DATE_TRUNC(fecha, MONTH)` (evita miles de
+`patrimonio NUMERIC`, `estado STRING`, `ingesta_ts TIMESTAMP`.
+Clave única: `(fecha, afp, fondo)`. El `MERGE` prefiere el valor confirmado sobre el
+provisorio, y un provisorio nunca reemplaza a uno ya confirmado. Partición mensual `DATE_TRUNC(fecha, MONTH)` (evita miles de
 particiones diminutas) y cluster por `afp, fondo`.
 
 `silver.indicadores`: `fecha DATE`, `indicador STRING`, `valor NUMERIC`, `ingesta_ts`.
@@ -107,7 +119,8 @@ Todas las consultas usan **parámetros** de BigQuery (nunca concatenación de st
 | Sin nulos en fecha, AFP, fondo y valor | Crítica |
 | Valor cuota > 0 | Crítica |
 | Fechas no futuras | Crítica |
-| Sin duplicados `(fecha, afp, fondo)` en el lote | Crítica |
+| Sin claves duplicadas con **valores distintos** en el lote | Crítica |
+| Claves duplicadas con el **mismo valor** (caso real: dólar del 2022-04-19 en mindicador.cl) | Advertencia (silver deduplica) |
 | Variación diaria del valor cuota < 15 % | Advertencia (posible error de la fuente) |
 | Las 7 AFP presentes en la última fecha | Advertencia |
 
