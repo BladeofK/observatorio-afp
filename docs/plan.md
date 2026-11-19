@@ -68,8 +68,11 @@ cambia los conteos.
 - [x] Límite de solicitudes por IP y tope diario de preguntas.
 - [x] Despliegue en Cloud Run (`min=0`, `max=1`); `/preguntar` responde 503 hasta activar
       Gemini.
-- [ ] Cargar la API key en Secret Manager y activar `usar_gemini`.
-- [ ] Probar preguntas maliciosas: `DROP TABLE`, leer silver, consultas sin límite.
+- [x] Cargar la API key en Secret Manager y activar `usar_gemini`.
+- [x] Preguntas reales respondidas con cifras correctas (verificadas contra gold).
+- [x] Probar preguntas maliciosas: inyección con `DROP TABLE`, leer bronze/silver y listar
+      `INFORMATION_SCHEMA` → rechazadas (422).
+- [x] Límite por IP comprobado en vivo: la sexta pregunta del minuto recibe 429.
 
 **Término:** API pública documentada en `/docs`; el LLM responde preguntas reales y rechaza las
 maliciosas.

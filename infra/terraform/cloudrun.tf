@@ -23,7 +23,7 @@ resource "google_cloud_run_v2_service" "api" {
   template {
     service_account                  = google_service_account.api.email
     max_instance_request_concurrency = 20
-    timeout                          = "60s"
+    timeout                          = "90s" # /preguntar puede probar varios modelos de Gemini
 
     scaling {
       min_instance_count = 0
@@ -48,6 +48,16 @@ resource "google_cloud_run_v2_service" "api" {
           name  = env.key
           value = env.value
         }
+      }
+
+      env {
+        name  = "GEMINI_MODEL"
+        value = var.modelo_gemini
+      }
+
+      env {
+        name  = "GEMINI_MODELOS_RESPALDO"
+        value = join(",", var.modelos_gemini_respaldo)
       }
 
       dynamic "env" {

@@ -141,6 +141,22 @@ Barreras, en capas (defensa en profundidad):
    Aunque todo lo anterior fallara, no puede escribir ni leer otras capas.
 7. **Límite de uso**: máximo N preguntas por IP por minuto y M preguntas diarias en total.
 
+### Robustez frente a Gemini (lecciones de la puesta en marcha)
+
+| Problema observado | Solución |
+|---|---|
+| `404`: la librería usaba la API **v1**, pero los modelos de AI Studio se publican en **v1beta** | Versión fijada explícitamente en el cliente (`api_version="v1beta"`) |
+| `gemini-2.5-flash` aparecía en la lista, pero estaba retirado para claves nuevas | Modelo configurable desde Terraform (`modelo_gemini`), sin reconstruir la imagen |
+| `503`: "high demand", saturación temporal del modelo | Modelos de respaldo en orden (`modelos_gemini_respaldo`) |
+| `504`: los Flash 3.x "piensan" y tardaban más de 12 s | Modelo *lite* primero; 25 s por intento y 75 s por pregunta; Cloud Run con 90 s |
+| La misma pregunta generaba SQL distinto en cada intento | Temperatura 0 |
+| El modelo creía que 2026 era el futuro y respondía `NO_APLICA` | El prompt incluye la fecha de hoy y el rango de los datos |
+| La respuesta no sabía qué significaba una cifra sin nombre | Alias descriptivos obligatorios y el SQL ejecutado se pasa al redactar |
+| Los errores no dejaban rastro | Cada falla de Gemini se registra con su código y mensaje (sin la API key) |
+
+Ninguno de estos errores puede generar cobros: la API key pertenece a un proyecto sin
+facturación, así que lo peor que puede pasar es que Gemini responda `429`.
+
 ## 8. Decisiones técnicas
 
 | Decisión | Alternativa descartada | Motivo |

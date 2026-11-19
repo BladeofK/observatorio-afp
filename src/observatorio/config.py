@@ -24,7 +24,12 @@ class Settings(BaseSettings):
 
     # LLM (Gemini vía AI Studio; la API key debe pertenecer a un proyecto SIN facturación)
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    # Los modelos "lite" responden más rápido (los Flash 3.x "piensan" y tardan >12 s).
+    gemini_model: str = "gemini-3.5-flash-lite"
+    # Si el principal está saturado (503), sin cuota (429) o lento, se prueban estos en orden.
+    gemini_modelos_respaldo: str = "gemini-flash-lite-latest,gemini-flash-latest"
+    gemini_timeout_s: float = 25  # por intento
+    gemini_presupuesto_s: float = 75  # por pregunta (Cloud Run corta a los 90 s)
     llm_max_por_minuto_ip: int = 5
     llm_max_diario: int = 200
 

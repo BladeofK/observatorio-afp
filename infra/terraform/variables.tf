@@ -48,6 +48,18 @@ variable "imagen" {
   default     = null
 }
 
+variable "modelo_gemini" {
+  description = "Modelo de Gemini. Google retira versiones con el tiempo: si /preguntar responde 503 con código 404, cambia este valor por uno vigente (no requiere reconstruir la imagen)."
+  type        = string
+  default     = "gemini-3.5-flash-lite"
+}
+
+variable "modelos_gemini_respaldo" {
+  description = "Modelos que se prueban en orden si el principal está saturado, sin cuota o lento."
+  type        = list(string)
+  default     = ["gemini-flash-lite-latest", "gemini-flash-latest"]
+}
+
 variable "usar_gemini" {
   description = "true solo después de cargar la API key de Gemini en Secret Manager."
   type        = bool
